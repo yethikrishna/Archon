@@ -74,6 +74,7 @@ export default function App() {
   const [visible, setVisible] = useState<Record<string, boolean>>({})
   const [data, setData] = useState<Record<string, GeoJSONFeature[]>>({})
   const [selected, setSelected] = useState<any | null>(null)
+  const [alertSeverity, setAlertSeverity] = useState<'all'|'low'|'med'|'high'>('all')
 
   useEffect(() => {
     fetchLayers().then(ls => {
@@ -102,6 +103,7 @@ export default function App() {
       const layer = layers.find(l => l.id === id)
       if (!layer || !visible[id]) return
       feats.forEach(f => {
+        if (id === 'alerts' && alertSeverity !== 'all' && f.properties?.severity && f.properties.severity !== alertSeverity) return
         if (f.geometry?.type === 'Point' || layer.geometry_type === 'Point' || layer.geometry_type === 'Mixed') out.push(f)
       })
     })
@@ -128,6 +130,16 @@ export default function App() {
           {layers.map(l => (
             <LayerToggle key={l.id} layer={l} checked={!!visible[l.id]} onChange={(v) => setVisible(prev => ({ ...prev, [l.id]: v }))} />
           ))}
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <label>Alert severity:
+            <select value={alertSeverity} onChange={e => setAlertSeverity(e.target.value as any)} style={{ marginLeft: 6 }}>
+              <option value="all">All</option>
+              <option value="low">Low</option>
+              <option value="med">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
         </div>
       </div>
       <MapContainer center={defaultCenter} zoom={6} style={{ height: '100%' }}>
