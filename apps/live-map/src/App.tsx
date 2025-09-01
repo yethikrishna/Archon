@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap, CircleMarker } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import supercluster from 'supercluster'
 import { connectStream, fetchFeatures, fetchLayers, GeoJSONFeature, MapLayer } from './lib/api'
 import { LayerToggle } from './components/LayerToggle'
 import { DetailsPanel } from './components/DetailsPanel'
@@ -16,6 +17,56 @@ function FitBounds({ features }: { features: GeoJSONFeature[] }) {
     map.fitBounds(group.getBounds().pad(0.2))
   }, [features])
   return null
+}
+
+function ClusterLayer({ points, onClick }: { points: GeoJSONFeature[]; onClick: (f: any) => void }) {
+  const map = useMap()
+  const [clusters, setClusters] = useState<any[]>([])
+  const index = useMemo(() => {
+    const idx = new supercluster({ radius: 60, maxZoom: 18 })
+    const features = points.map((p, i) => ({
+      type: 'Feature',
+      geometry: p.geometry,
+      properties: { cluster: false, index: i, ...(p.properties || {}) }
+    })) as any
+    idx.load(features)
+    return idx
+  }, [points])
+  useEffect(() => {
+    const update = () => {
+      const b = map.getBounds()
+      const z = map.getZoom()
+      const clusters = index.getClusters([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], Math.round(z))
+      setClusters(clusters)
+    }
+    update()
+    map.on('moveend zoomend', update)
+    return () => { map.off('moveend zoomend', update) }
+  }, [index])
+  return (
+    <>
+      {clusters.map((c, i) => {
+        const [lon, lat] = c.geometry.coordinates
+        if (c.properties.cluster) {
+          const count = c.properties.point_count as number
+          const size = Math.min(40, 20 + Math.log(count + 1) * 8)
+          return (
+            <CircleMarker key={`c-${i}`} center={[lat, lon]} pathOptions={{ color: '#111827', fillColor: '#60a5fa', fillOpacity: 0.8 }} radius={size/4}>
+              <Popup>{count} features</Popup>
+            </CircleMarker>
+          )
+        } else {
+          const idx = c.properties.index
+          const f = points[idx]
+          return (
+            <Marker key={`m-${i}`} position={[lat, lon] as any} eventHandlers={{ click: () => onClick(f) }}>
+              <Popup>{f.properties?.title || f.properties?.id || 'Feature'}</Popup>
+            </Marker>
+          )
+        }
+      })}
+    </>
+  )
 }
 
 export default function App() {
@@ -84,11 +135,7 @@ export default function App() {
         {polygons.map((f, i) => (
           <GeoJSON key={`poly-${i}`} data={f as any} eventHandlers={{ click: () => setSelected(f) }} />
         ))}
-        {points.map((f, i) => (
-          <Marker key={`pt-${i}`} position={[f.geometry.coordinates[1], f.geometry.coordinates[0]] as any} eventHandlers={{ click: () => setSelected(f) }}>
-            <Popup>{f.properties?.title || f.properties?.id || 'Feature'}</Popup>
-          </Marker>
-        ))}
+        <ClusterLayer points={points} onClick={(f) => setSelected(f)} />
         <FitBounds features={[...points, ...polygons]} />
       </MapContainer>
       <DetailsPanel feature={selected} onClose={() => setSelected(null)} />
