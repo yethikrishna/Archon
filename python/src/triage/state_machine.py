@@ -80,4 +80,7 @@ class TriageSession:
         )
         self.case.outcome = outcome
         self.case.add_event("outcome_finalized", {"severity": severity.level})
+        if escalate:
+            # Placeholder for Dialect Alert Network notification
+            self.case.add_event("alert_network_notified", {"network": "Dialect"})
         return outcome
