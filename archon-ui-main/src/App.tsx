@@ -9,6 +9,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { ProjectPage } from './pages/ProjectPage';
+import { TriagePage } from './pages/TriagePage';
 import { DisconnectScreenOverlay } from './components/DisconnectScreenOverlay';
 import { ErrorBoundaryWithBugReport } from './components/bug-report/ErrorBoundaryWithBugReport';
 import { MigrationBanner } from './components/ui/MigrationBanner';
@@ -24,6 +25,7 @@ const AppRoutes = () => {
       <Route path="/onboarding" element={<OnboardingPage />} />
       <Route path="/settings" element={<SettingsPage />} />
       <Route path="/mcp" element={<MCPPage />} />
+      <Route path="/triage" element={<TriagePage />} />
       {projectsEnabled ? (
         <Route path="/projects" element={<ProjectPage />} />
       ) : (
